@@ -1,14 +1,27 @@
+import { useState } from "react";
 import TaskItem from "./components/TaskItem";
 import type { Task } from "./types/task";
 
-const tasks: Task[] = [
+const initialTasks: Task[] = [
   { id: "1", title: "React öğren", completed: true },
-  { id: "2", title: "TypeScript çalış", completed: false },
+  { id: "2", title: "TypeScript çalış", completed: true },
   { id: "3", title: "Task Manager geliştir", completed: false },
   { id: "4", title: "Git ve GitHub öğren", completed: false },
 ];
 
 function App() {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+
+  function toggleTask(id: string) {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === id
+          ? { ...task, completed: !task.completed }
+          : task
+      )
+    );
+  }
+
   return (
     <main>
       <h1>My Task Manager</h1>
@@ -17,7 +30,12 @@ function App() {
 
       <ul>
         {tasks.map((task) => (
-          <TaskItem key={task.id} title={task.title} />
+          <TaskItem
+            key={task.id}
+            title={task.title}
+            completed={task.completed}
+            onToggle={() => toggleTask(task.id)}
+          />
         ))}
       </ul>
     </main>
@@ -25,4 +43,3 @@ function App() {
 }
 
 export default App;
-
