@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import TaskForm from "./components/TaskForm";
 import TaskItem from "./components/TaskItem";
@@ -34,6 +33,12 @@ function App() {
     );
   }
 
+  function deleteTask(id: string) {
+    setTasks((prevTasks) =>
+      prevTasks.filter((task) => task.id !== id)
+    );
+  }
+
   return (
     <main>
       <h1>My Task Manager</h1>
@@ -49,6 +54,7 @@ function App() {
             title={task.title}
             completed={task.completed}
             onToggle={() => toggleTask(task.id)}
+            onDelete={() => deleteTask(task.id)}
           />
         ))}
       </ul>
