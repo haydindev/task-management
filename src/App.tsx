@@ -39,6 +39,16 @@ function App() {
     );
   }
 
+  function updateTask(id: string, newTitle: string) {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === id
+          ? { ...task, title: newTitle }
+          : task
+      )
+    );
+  }
+
   return (
     <main>
       <h1>My Task Manager</h1>
@@ -55,6 +65,9 @@ function App() {
             completed={task.completed}
             onToggle={() => toggleTask(task.id)}
             onDelete={() => deleteTask(task.id)}
+            onEdit={(newTitle) =>
+              updateTask(task.id, newTitle)
+            }
           />
         ))}
       </ul>
