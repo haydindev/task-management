@@ -3,6 +3,7 @@ import { useState } from "react";
 import TaskForm from "./components/TaskForm";
 import TaskItem from "./components/TaskItem";
 import type { Task } from "./types/task";
+import "./App.css";
 
 type TaskFilter = "all" | "active" | "completed";
 
@@ -60,29 +61,40 @@ function App() {
   });
 
   return (
-    <main>
+    <main className="task-app">
       <h1>My Task Manager</h1>
       <p>Görevlerini kolayca yönet.</p>
       <p>React görev yönetimi uygulamamı geliştiriyorum.</p>
 
       <TaskForm onAddTask={addTask} />
 
-      <div>
-        <button type="button" onClick={() => setFilter("all")}>
-          Tümü
-        </button>
-        <button type="button" onClick={() => setFilter("active")}>
-          Aktif
-        </button>
+      <div className="task-filters">
         <button
           type="button"
+          aria-pressed={filter === "all"}
+          onClick={() => setFilter("all")}
+        >
+          Tümü
+        </button>
+
+        <button
+          type="button"
+          aria-pressed={filter === "active"}
+          onClick={() => setFilter("active")}
+        >
+          Aktif
+        </button>
+
+        <button
+          type="button"
+          aria-pressed={filter === "completed"}
           onClick={() => setFilter("completed")}
         >
           Tamamlanan
         </button>
       </div>
 
-      <ul>
+      <ul className="task-list">
         {filteredTasks.map((task) => (
           <TaskItem
             key={task.id}
