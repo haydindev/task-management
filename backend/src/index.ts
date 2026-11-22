@@ -1,4 +1,20 @@
 
-const message: string = "Backend TypeScript başarıyla çalışıyor!";
+import express from "express";
 
-console.log(message);
+const app = express();
+const PORT = 3000;
+
+app.get("/", (_req, res) => {
+  res.send("Task Management API çalışıyor!");
+});
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "task-management-api",
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Backend http://localhost:${PORT} adresinde çalışıyor.`);
+});
