@@ -2,9 +2,13 @@
 import express from "express";
 import tasksRouter from "./routes/tasks";
 import { errorHandler } from "./middleware/errorHandler";
+import { requestLogger } from "./middleware/requestLogger";
 
 const app = express();
 const PORT = 3000;
+
+// HTTP isteklerini logla
+app.use(requestLogger);
 
 // JSON verilerini oku
 app.use(express.json());
