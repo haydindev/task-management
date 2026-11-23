@@ -1,6 +1,10 @@
 
 import express from "express";
 import { randomUUID } from "node:crypto";
+import {
+  validateCreateTask,
+  validateUpdateTask,
+} from "../validation/taskValidation";
 
 type Task = {
   id: string;
@@ -24,18 +28,18 @@ router.get("/", (_req, res) => {
 
 // Yeni görev oluştur
 router.post("/", (req, res) => {
-  const title: unknown = req.body?.title;
+  const result = validateCreateTask(req.body);
 
-  if (typeof title !== "string" || title.trim() === "") {
+  if (!result.success) {
     res.status(400).json({
-      message: "Geçerli bir görev başlığı gerekli.",
+      message: result.message,
     });
     return;
   }
 
   const newTask: Task = {
     id: randomUUID(),
-    title: title.trim(),
+    title: result.data.title,
     completed: false,
   };
 
@@ -55,39 +59,21 @@ router.patch("/:id", (req, res) => {
     return;
   }
 
-  const title: unknown = req.body?.title;
-  const completed: unknown = req.body?.completed;
+  const result = validateUpdateTask(req.body);
 
-  if (title === undefined && completed === undefined) {
+  if (!result.success) {
     res.status(400).json({
-      message: "Güncellenecek alan belirtilmedi.",
+      message: result.message,
     });
     return;
   }
 
-  if (
-    title !== undefined &&
-    (typeof title !== "string" || title.trim() === "")
-  ) {
-    res.status(400).json({
-      message: "Geçerli bir görev başlığı gerekli.",
-    });
-    return;
+  if (result.data.title !== undefined) {
+    task.title = result.data.title;
   }
 
-  if (completed !== undefined && typeof completed !== "boolean") {
-    res.status(400).json({
-      message: "completed alanı boolean olmalıdır.",
-    });
-    return;
-  }
-
-  if (typeof title === "string") {
-    task.title = title.trim();
-  }
-
-  if (typeof completed === "boolean") {
-    task.completed = completed;
+  if (result.data.completed !== undefined) {
+    task.completed = result.data.completed;
   }
 
   res.status(200).json(task);

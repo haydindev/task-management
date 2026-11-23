@@ -1,11 +1,12 @@
 
 import express from "express";
 import tasksRouter from "./routes/tasks";
+import { errorHandler } from "./middleware/errorHandler";
 
 const app = express();
 const PORT = 3000;
 
-// Gelen JSON verilerini okumak için
+// JSON verilerini oku
 app.use(express.json());
 
 // Ana sayfa
@@ -21,10 +22,20 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Görev endpoint'lerini bağla
+// Görev endpoint'leri
 app.use("/api/tasks", tasksRouter);
 
-// HTTP sunucusunu başlat
+// Tanımlanmamış endpoint'ler
+app.use((_req, res) => {
+  res.status(404).json({
+    message: "Endpoint bulunamadı.",
+  });
+});
+
+// Merkezi hata yönetimi
+app.use(errorHandler);
+
+// Sunucuyu başlat
 app.listen(PORT, () => {
   console.log(`Backend http://localhost:${PORT} adresinde çalışıyor.`);
 });
