@@ -1,6 +1,7 @@
 
 import express from "express";
 import tasksRouter from "./routes/tasks";
+import { pool } from "./db/pool";
 import { errorHandler } from "./middleware/errorHandler";
 import { requestLogger } from "./middleware/requestLogger";
 
@@ -39,7 +40,23 @@ app.use((_req, res) => {
 // Merkezi hata yönetimi
 app.use(errorHandler);
 
-// Sunucuyu başlat
-app.listen(PORT, () => {
-  console.log(`Backend http://localhost:${PORT} adresinde çalışıyor.`);
-});
+// Önce veritabanını kontrol et, sonra sunucuyu başlat
+async function startServer() {
+  try {
+    await pool.query("SELECT 1");
+
+    console.log("PostgreSQL bağlantısı başarılı.");
+
+    app.listen(PORT, () => {
+      console.log(
+        `Backend http://localhost:${PORT} adresinde çalışıyor.`
+      );
+    });
+  } catch (error) {
+    console.error("PostgreSQL bağlantısı kurulamadı:", error);
+    process.exitCode = 1;
+    await pool.end();
+  }
+}
+
+void startServer();

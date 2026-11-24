@@ -1,6 +1,6 @@
 
 import express from "express";
-import { randomUUID } from "node:crypto";
+import { pool } from "../db/pool";
 import {
   validateCreateTask,
   validateUpdateTask,
@@ -14,85 +14,108 @@ type Task = {
 
 const router = express.Router();
 
-const tasks: Task[] = [
-  { id: "1", title: "React öğren", completed: true },
-  { id: "2", title: "TypeScript çalış", completed: true },
-  { id: "3", title: "Task Manager geliştir", completed: false },
-  { id: "4", title: "Git ve GitHub öğren", completed: false },
-];
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidId(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
 
 // Görevleri listele
-router.get("/", (_req, res) => {
-  res.status(200).json(tasks);
+router.get("/", async (_req, res) => {
+  const result = await pool.query<Task>(
+    "SELECT id, title, completed FROM tasks ORDER BY title, id"
+  );
+
+  res.status(200).json(result.rows);
 });
 
 // Yeni görev oluştur
-router.post("/", (req, res) => {
-  const result = validateCreateTask(req.body);
+router.post("/", async (req, res) => {
+  const validation = validateCreateTask(req.body);
 
-  if (!result.success) {
+  if (!validation.success) {
     res.status(400).json({
-      message: result.message,
+      message: validation.message,
     });
     return;
   }
 
-  const newTask: Task = {
-    id: randomUUID(),
-    title: result.data.title,
-    completed: false,
-  };
+  const result = await pool.query<Task>(
+    `INSERT INTO tasks (title)
+     VALUES ($1)
+     RETURNING id, title, completed`,
+    [validation.data.title]
+  );
 
-  tasks.push(newTask);
-
-  res.status(201).json(newTask);
+  res.status(201).json(result.rows[0]);
 });
 
 // Görev güncelle
-router.patch("/:id", (req, res) => {
-  const task = tasks.find((item) => item.id === req.params.id);
+router.patch("/:id", async (req, res) => {
+  const id = req.params.id;
 
-  if (!task) {
+  if (!isValidId(id)) {
+    res.status(400).json({
+      message: "Geçersiz görev ID'si.",
+    });
+    return;
+  }
+
+  const validation = validateUpdateTask(req.body);
+
+  if (!validation.success) {
+    res.status(400).json({
+      message: validation.message,
+    });
+    return;
+  }
+
+  const result = await pool.query<Task>(
+    `UPDATE tasks
+     SET title = COALESCE($2::text, title),
+         completed = COALESCE($3::boolean, completed)
+     WHERE id = $1
+     RETURNING id, title, completed`,
+    [
+      id,
+      validation.data.title ?? null,
+      validation.data.completed ?? null,
+    ]
+  );
+
+  if (result.rows.length === 0) {
     res.status(404).json({
       message: "Görev bulunamadı.",
     });
     return;
   }
 
-  const result = validateUpdateTask(req.body);
-
-  if (!result.success) {
-    res.status(400).json({
-      message: result.message,
-    });
-    return;
-  }
-
-  if (result.data.title !== undefined) {
-    task.title = result.data.title;
-  }
-
-  if (result.data.completed !== undefined) {
-    task.completed = result.data.completed;
-  }
-
-  res.status(200).json(task);
+  res.status(200).json(result.rows[0]);
 });
 
 // Görev sil
-router.delete("/:id", (req, res) => {
-  const index = tasks.findIndex(
-    (item) => item.id === req.params.id
+router.delete("/:id", async (req, res) => {
+  const id = req.params.id;
+
+  if (!isValidId(id)) {
+    res.status(400).json({
+      message: "Geçersiz görev ID'si.",
+    });
+    return;
+  }
+
+  const result = await pool.query(
+    "DELETE FROM tasks WHERE id = $1 RETURNING id",
+    [id]
   );
 
-  if (index === -1) {
+  if (result.rows.length === 0) {
     res.status(404).json({
       message: "Görev bulunamadı.",
     });
     return;
   }
-
-  tasks.splice(index, 1);
 
   res.status(204).send();
 });
