@@ -13,7 +13,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // GET: Görevleri API'den yükle
+  // GET: Görevleri PostgreSQL'den yükle
   useEffect(() => {
     const controller = new AbortController();
 
@@ -48,7 +48,7 @@ function App() {
     return () => controller.abort();
   }, []);
 
-  // POST: Yeni görevi PostgreSQL'e kaydet
+  // POST: Yeni görev oluştur
   async function addTask(title: string) {
     setError(null);
 
@@ -73,30 +73,76 @@ function App() {
     }
   }
 
-  // PATCH ve DELETE henüz yerel state üzerinde çalışıyor
-  function toggleTask(id: string) {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task
-      )
-    );
+  // PATCH: Tamamlanma durumunu değiştir
+  async function toggleTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+
+    if (!task) return;
+
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          completed: !task.completed,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const updatedTask: Task = await response.json();
+
+      setTasks((prevTasks) =>
+        prevTasks.map((item) =>
+          item.id === id ? updatedTask : item
+        )
+      );
+    } catch {
+      setError("Görev durumu güncellenemedi.");
+    }
   }
 
+  // PATCH: Görev başlığını değiştir
+  async function updateTask(id: string, newTitle: string) {
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: newTitle,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const updatedTask: Task = await response.json();
+
+      setTasks((prevTasks) =>
+        prevTasks.map((item) =>
+          item.id === id ? updatedTask : item
+        )
+      );
+    } catch {
+      setError("Görev başlığı güncellenemedi.");
+    }
+  }
+
+  // DELETE: Henüz yalnızca React state'i
   function deleteTask(id: string) {
     setTasks((prevTasks) =>
       prevTasks.filter((task) => task.id !== id)
-    );
-  }
-
-  function updateTask(id: string, newTitle: string) {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id
-          ? { ...task, title: newTitle }
-          : task
-      )
     );
   }
 
