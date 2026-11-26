@@ -6,18 +6,27 @@ import type { Task } from "./types/task";
 import "./App.css";
 
 type TaskFilter = "all" | "active" | "completed";
+type LoadStatus = "loading" | "success" | "error";
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<TaskFilter>("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const [loadStatus, setLoadStatus] =
+    useState<LoadStatus>("loading");
+  const [retryCount, setRetryCount] = useState(0);
+  const [actionError, setActionError] = useState<string | null>(
+    null
+  );
 
   // GET: Görevleri API'den yükle
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadTasks() {
+      setLoadStatus("loading");
+      setActionError(null);
+
       try {
         const response = await fetch("/api/tasks", {
           signal: controller.signal,
@@ -31,14 +40,11 @@ function App() {
 
         if (!controller.signal.aborted) {
           setTasks(data);
+          setLoadStatus("success");
         }
       } catch {
         if (!controller.signal.aborted) {
-          setError("Görevler API'den alınamadı.");
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
+          setLoadStatus("error");
         }
       }
     }
@@ -46,11 +52,11 @@ function App() {
     void loadTasks();
 
     return () => controller.abort();
-  }, []);
+  }, [retryCount]);
 
   // POST: Yeni görev oluştur
   async function addTask(title: string) {
-    setError(null);
+    setActionError(null);
 
     try {
       const response = await fetch("/api/tasks", {
@@ -69,17 +75,17 @@ function App() {
 
       setTasks((prevTasks) => [...prevTasks, newTask]);
     } catch {
-      setError("Görev eklenemedi.");
+      setActionError("Görev eklenemedi.");
     }
   }
 
-  // PATCH: Görevin tamamlanma durumunu değiştir
+  // PATCH: Tamamlanma durumunu güncelle
   async function toggleTask(id: string) {
     const task = tasks.find((item) => item.id === id);
 
     if (!task) return;
 
-    setError(null);
+    setActionError(null);
 
     try {
       const response = await fetch(`/api/tasks/${id}`, {
@@ -104,13 +110,13 @@ function App() {
         )
       );
     } catch {
-      setError("Görev durumu güncellenemedi.");
+      setActionError("Görev durumu güncellenemedi.");
     }
   }
 
-  // PATCH: Görevin başlığını değiştir
+  // PATCH: Görev başlığını güncelle
   async function updateTask(id: string, newTitle: string) {
-    setError(null);
+    setActionError(null);
 
     try {
       const response = await fetch(`/api/tasks/${id}`, {
@@ -135,13 +141,13 @@ function App() {
         )
       );
     } catch {
-      setError("Görev başlığı güncellenemedi.");
+      setActionError("Görev başlığı güncellenemedi.");
     }
   }
 
   // DELETE: Görevi PostgreSQL'den sil
   async function deleteTask(id: string) {
-    setError(null);
+    setActionError(null);
 
     try {
       const response = await fetch(`/api/tasks/${id}`, {
@@ -156,7 +162,7 @@ function App() {
         prevTasks.filter((task) => task.id !== id)
       );
     } catch {
-      setError("Görev silinemedi.");
+      setActionError("Görev silinemedi.");
     }
   }
 
@@ -172,53 +178,74 @@ function App() {
       <p>Görevlerini kolayca yönet.</p>
       <p>React görev yönetimi uygulamamı geliştiriyorum.</p>
 
-      {loading && <p>Görevler yükleniyor...</p>}
-      {error && <p role="alert">{error}</p>}
-
-      <TaskForm onAddTask={addTask} />
-
-      <div className="task-filters">
-        <button
-          type="button"
-          aria-pressed={filter === "all"}
-          onClick={() => setFilter("all")}
-        >
-          Tümü
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={filter === "active"}
-          onClick={() => setFilter("active")}
-        >
-          Aktif
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={filter === "completed"}
-          onClick={() => setFilter("completed")}
-        >
-          Tamamlanan
-        </button>
-      </div>
-
-      {!loading && !error && filteredTasks.length === 0 && (
-        <p>Görev bulunamadı.</p>
+      {loadStatus === "loading" && (
+        <p role="status">Görevler yükleniyor...</p>
       )}
 
-      <ul className="task-list">
-        {filteredTasks.map((task) => (
-          <TaskItem
-            key={task.id}
-            title={task.title}
-            completed={task.completed}
-            onToggle={() => toggleTask(task.id)}
-            onDelete={() => deleteTask(task.id)}
-            onEdit={(newTitle) => updateTask(task.id, newTitle)}
-          />
-        ))}
-      </ul>
+      {loadStatus === "error" && (
+        <div>
+          <p role="alert">Görevler API'den alınamadı.</p>
+          <button
+            type="button"
+            onClick={() => setRetryCount((count) => count + 1)}
+          >
+            Yeniden Dene
+          </button>
+        </div>
+      )}
+
+      {loadStatus === "success" && (
+        <>
+          {actionError && <p role="alert">{actionError}</p>}
+
+          <TaskForm onAddTask={addTask} />
+
+          <div className="task-filters">
+            <button
+              type="button"
+              aria-pressed={filter === "all"}
+              onClick={() => setFilter("all")}
+            >
+              Tümü
+            </button>
+
+            <button
+              type="button"
+              aria-pressed={filter === "active"}
+              onClick={() => setFilter("active")}
+            >
+              Aktif
+            </button>
+
+            <button
+              type="button"
+              aria-pressed={filter === "completed"}
+              onClick={() => setFilter("completed")}
+            >
+              Tamamlanan
+            </button>
+          </div>
+
+          {filteredTasks.length === 0 && (
+            <p>Görev bulunamadı.</p>
+          )}
+
+          <ul className="task-list">
+            {filteredTasks.map((task) => (
+              <TaskItem
+                key={task.id}
+                title={task.title}
+                completed={task.completed}
+                onToggle={() => toggleTask(task.id)}
+                onDelete={() => deleteTask(task.id)}
+                onEdit={(newTitle) =>
+                  updateTask(task.id, newTitle)
+                }
+              />
+            ))}
+          </ul>
+        </>
+      )}
     </main>
   );
 }
