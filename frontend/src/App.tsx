@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TaskForm from "./components/TaskForm";
 import TaskItem from "./components/TaskItem";
 import type { Task } from "./types/task";
@@ -7,17 +7,48 @@ import "./App.css";
 
 type TaskFilter = "all" | "active" | "completed";
 
-const initialTasks: Task[] = [
-  { id: "1", title: "React öğren", completed: true },
-  { id: "2", title: "TypeScript çalış", completed: true },
-  { id: "3", title: "Task Manager geliştir", completed: false },
-  { id: "4", title: "Git ve GitHub öğren", completed: false },
-];
-
 function App() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<TaskFilter>("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // PostgreSQL destekli API'den görevleri getir
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadTasks() {
+      try {
+        const response = await fetch("/api/tasks", {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data: Task[] = await response.json();
+
+        if (!controller.signal.aborted) {
+          setTasks(data);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setError("Görevler API'den alınamadı.");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadTasks();
+
+    return () => controller.abort();
+  }, []);
+
+  // Geçici olarak yerel çalışan işlemler
   function addTask(title: string) {
     const newTask: Task = {
       id: crypto.randomUUID(),
@@ -66,6 +97,9 @@ function App() {
       <p>Görevlerini kolayca yönet.</p>
       <p>React görev yönetimi uygulamamı geliştiriyorum.</p>
 
+      {loading && <p>Görevler yükleniyor...</p>}
+      {error && <p role="alert">{error}</p>}
+
       <TaskForm onAddTask={addTask} />
 
       <div className="task-filters">
@@ -93,6 +127,10 @@ function App() {
           Tamamlanan
         </button>
       </div>
+
+      {!loading && !error && filteredTasks.length === 0 && (
+        <p>Görev bulunamadı.</p>
+      )}
 
       <ul className="task-list">
         {filteredTasks.map((task) => (
