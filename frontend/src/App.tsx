@@ -13,7 +13,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // PostgreSQL destekli API'den görevleri getir
+  // GET: Görevleri API'den yükle
   useEffect(() => {
     const controller = new AbortController();
 
@@ -48,17 +48,32 @@ function App() {
     return () => controller.abort();
   }, []);
 
-  // Geçici olarak yerel çalışan işlemler
-  function addTask(title: string) {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title,
-      completed: false,
-    };
+  // POST: Yeni görevi PostgreSQL'e kaydet
+  async function addTask(title: string) {
+    setError(null);
 
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const newTask: Task = await response.json();
+
+      setTasks((prevTasks) => [...prevTasks, newTask]);
+    } catch {
+      setError("Görev eklenemedi.");
+    }
   }
 
+  // PATCH ve DELETE henüz yerel state üzerinde çalışıyor
   function toggleTask(id: string) {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
