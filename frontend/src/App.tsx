@@ -13,7 +13,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // GET: Görevleri PostgreSQL'den yükle
+  // GET: Görevleri API'den yükle
   useEffect(() => {
     const controller = new AbortController();
 
@@ -73,7 +73,7 @@ function App() {
     }
   }
 
-  // PATCH: Tamamlanma durumunu değiştir
+  // PATCH: Görevin tamamlanma durumunu değiştir
   async function toggleTask(id: string) {
     const task = tasks.find((item) => item.id === id);
 
@@ -108,7 +108,7 @@ function App() {
     }
   }
 
-  // PATCH: Görev başlığını değiştir
+  // PATCH: Görevin başlığını değiştir
   async function updateTask(id: string, newTitle: string) {
     setError(null);
 
@@ -139,11 +139,25 @@ function App() {
     }
   }
 
-  // DELETE: Henüz yalnızca React state'i
-  function deleteTask(id: string) {
-    setTasks((prevTasks) =>
-      prevTasks.filter((task) => task.id !== id)
-    );
+  // DELETE: Görevi PostgreSQL'den sil
+  async function deleteTask(id: string) {
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      setTasks((prevTasks) =>
+        prevTasks.filter((task) => task.id !== id)
+      );
+    } catch {
+      setError("Görev silinemedi.");
+    }
   }
 
   const filteredTasks = tasks.filter((task) => {
